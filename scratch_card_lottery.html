@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运刮刮乐</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #ffd1dc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #ff69b4;
+            margin-bottom: 20px;
+        }
+        #scratch-card {
+            width: 300px;
+            height: 150px;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #prize {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff69b4;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        button {
+            background-color: #ff69b4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #ff1493;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        #admin-panel {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+        }
+        input, select {
+            margin: 5px;
+            padding: 5px;
+        }
+        #scratch-progress {
+            width: 100%;
+            height: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        #scratch-progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #ff69b4;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>幸运刮刮乐</h1>
+        <div id="scratch-card">
+            <canvas id="scratch-canvas"></canvas>
+            <div id="prize"></div>
+        </div>
+        <div id="scratch-progress">
+            <div id="scratch-progress-bar"></div>
+        </div>
+        <button id="new-card">新的刮刮卡</button>
+        <button id="admin-button">管理设置</button>
+        
+        <div id="admin-panel">
+            <h2>奖品设置</h2>
+            <input type="text" id="prize-name" placeholder="奖品名称">
+            <input type="number" id="prize-probability" placeholder="概率 (0-100)">
+            <button id="add-prize">添加奖品</button>
+            <select id="prize-list"></select>
+            <button id="remove-prize">移除奖品</button>
+        </div>
+    </div>
+
+    <script>
+        const scratchCard = document.getElementById('scratch-card');
+        const canvas = document.getElementById('scratch-canvas');
+        const ctx = canvas.getContext('2d');
+        const prizeDisplay = document.getElementById('prize');
+        const newCardButton = document.getElementById('new-card');
+        const adminButton = document.getElementById('admin-button');
+        const adminPanel = document.getElementById('admin-panel');
+        const prizeName = document.getElementById('prize-name');
+        const prizeProbability = document.getElementById('prize-probability');
+        const addPrizeButton = document.getElementById('add-prize');
+        const prizeList = document.getElementById('prize-list');
+        const removePrizeButton = document.getElementById('remove-prize');
+        const progressBar = document.getElementById('scratch-progress-bar');
+
+        let prizes = [
+            { name: "可爱玩偶", probability: 30 },
+            { name: "彩色文具套装", probability: 40 },
+            { name: "美味糖果", probability: 30 }
+        ];
+
+        let isScratching = false;
+        let scratchedPixels = 0;
+        let totalPixels = 0;
+
+        function updatePrizeList() {
+            prizeList.innerHTML = '';
+            prizes.forEach(prize => {
+                const option = document.createElement('option');
+                option.textContent = `${prize.name} (${prize.probability}%)`;
+                option.value = prize.name;
+                prizeList.appendChild(option);
+            });
+        }
+
+        function selectPrize() {
+            const rand = Math.random() * 100;
+            let sum = 0;
+            for (let prize of prizes) {
+                sum += prize.probability;
+                if (rand <= sum) {
+                    return prize.name;
+                }
+            }
+            return "继续加油哦";
+        }
+
+        function revealPrize() {
+            const prize = selectPrize();
+            prizeDisplay.textContent = prize;
+            prizeDisplay.style.opacity = 1;
+            isScratching = false;
+        }
+
+        function resetCard() {
+            canvas.width = scratchCard.offsetWidth;
+            canvas.height = scratchCard.offsetHeight;
+            ctx.fillStyle = '#ff69b4';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            prizeDisplay.style.opacity = 0;
+            scratchedPixels = 0;
+            totalPixels = canvas.width * canvas.height;
+            progressBar.style.width = '0%';
+            isScratching = true;
+        }
+
+        function scratch(x, y) {
+            const radius = 20;
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fill();
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            scratchedPixels = imageData.data.filter((_, i) => i % 4 === 3 && imageData.data[i] === 0).length;
+            const scratchPercentage = (scratchedPixels / totalPixels) * 100;
+            progressBar.style.width = `${scratchPercentage}%`;
+
+            if (scratchPercentage > 70 && isScratching) {
+                revealPrize();
+            }
+        }
+
+        scratchCard.addEventListener('mousemove', (e) => {
+            if (e.buttons !== 1 || !isScratching) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            scratch(x, y);
+        });
+
+        scratchCard.addEventListener('touchmove', (e) => {
+            if (!isScratching) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            scratch(x, y);
+        });
+
+        newCardButton.addEventListener('click', resetCard);
+
+        adminButton.addEventListener('click', () => {
+            adminPanel.style.display = adminPanel.style.display === 'none' ? 'block' : 'none';
+            updatePrizeList();
+        });
+
+        addPrizeButton.addEventListener('click', () => {
+            const name = prizeName.value.trim();
+            const probability = parseFloat(prizeProbability.value);
+            if (name && !isNaN(probability) && probability > 0 && probability <= 100) {
+                prizes.push({ name, probability });
+                updatePrizeList();
+                prizeName.value = '';
+                prizeProbability.value = '';
+            } else {
+                alert('请输入有效的奖品名称和概率');
+            }
+        });
+
+        removePrizeButton.addEventListener('click', () => {
+            const selectedPrize = prizeList.value;
+            prizes = prizes.filter(prize => prize.name !== selectedPrize);
+            updatePrizeList();
+        });
+
+        // 初始化刮刮卡
+        resetCard();
+
+        // 添加窗口大小改变时的适配
+        window.addEventListener('resize', resetCard);
+    </script>
+</body>
+</html>

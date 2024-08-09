@@ -3,28 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>幸运刮刮乐</title>
+    <title>魔法刮刮乐</title>
     <style>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
         body {
             font-family: 'Arial', sans-serif;
-            background-color: #ffd1dc;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
             margin: 0;
             padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            overflow: hidden;
         }
         .container {
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.9);
             border-radius: 20px;
             padding: 20px;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
             text-align: center;
+            position: relative;
+            z-index: 1;
         }
         h1 {
             color: #ff69b4;
             margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
         }
         #scratch-card {
             width: 300px;
@@ -35,6 +48,7 @@
             cursor: pointer;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            animation: float 3s ease-in-out infinite;
         }
         canvas {
             position: absolute;
@@ -50,7 +64,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             opacity: 0;
-            transition: opacity 0.5s;
+            transition: opacity 0.5s, transform 0.5s;
         }
         button {
             background-color: #ff69b4;
@@ -60,24 +74,45 @@
             font-size: 16px;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
+            transition: all 0.3s;
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
         }
         button:hover {
             background-color: #ff1493;
+            transform: scale(1.05);
         }
         button:active {
             transform: scale(0.95);
+        }
+        button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255,255,255,0.2);
+            transform: rotate(45deg);
+            transition: all 0.3s;
+        }
+        button:hover::after {
+            left: 100%;
+            top: 100%;
         }
         #admin-panel {
             display: none;
             margin-top: 20px;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: rgba(240, 240, 240, 0.9);
             border-radius: 10px;
         }
         input, select {
             margin: 5px;
             padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
         }
         #scratch-progress {
             width: 100%;
@@ -90,14 +125,22 @@
         #scratch-progress-bar {
             width: 0%;
             height: 100%;
-            background-color: #ff69b4;
+            background: linear-gradient(90deg, #ff69b4, #ff1493);
             transition: width 0.3s;
+        }
+        .sparkle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #ffdf00;
+            border-radius: 50%;
+            animation: sparkle 1.5s infinite;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>幸运刮刮乐</h1>
+        <h1>魔法刮刮乐</h1>
         <div id="scratch-card">
             <canvas id="scratch-canvas"></canvas>
             <div id="prize"></div>
@@ -105,8 +148,8 @@
         <div id="scratch-progress">
             <div id="scratch-progress-bar"></div>
         </div>
-        <button id="new-card">新的刮刮卡</button>
-        <button id="admin-button">管理设置</button>
+        <button id="new-card">新的魔法卡</button>
+        <button id="admin-button">管理魔法卡</button>
         
         <div id="admin-panel">
             <h2>奖品设置</h2>
@@ -134,9 +177,9 @@
         const progressBar = document.getElementById('scratch-progress-bar');
 
         let prizes = [
-            { name: "可爱玩偶", probability: 30 },
-            { name: "彩色文具套装", probability: 40 },
-            { name: "美味糖果", probability: 30 }
+            { name: "魔法玩偶", probability: 30 },
+            { name: "彩虹文具套装", probability: 40 },
+            { name: "星空糖果", probability: 30 }
         ];
 
         let isScratching = false;
@@ -162,22 +205,42 @@
                     return prize.name;
                 }
             }
-            return "继续加油哦";
+            return "继续施展魔法哦";
         }
 
         function revealPrize() {
             const prize = selectPrize();
             prizeDisplay.textContent = prize;
             prizeDisplay.style.opacity = 1;
+            prizeDisplay.style.transform = 'translate(-50%, -50%) scale(1.2)';
             isScratching = false;
+            createSparkles();
         }
 
         function resetCard() {
             canvas.width = scratchCard.offsetWidth;
             canvas.height = scratchCard.offsetHeight;
-            ctx.fillStyle = '#ff69b4';
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#ff69b4');
+            gradient.addColorStop(1, '#ff1493');
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add some magical stars
+            ctx.fillStyle = 'white';
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 2;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             prizeDisplay.style.opacity = 0;
+            prizeDisplay.style.transform = 'translate(-50%, -50%) scale(1)';
             scratchedPixels = 0;
             totalPixels = canvas.width * canvas.height;
             progressBar.style.width = '0%';
@@ -191,6 +254,9 @@
             ctx.arc(x, y, radius, 0, 2 * Math.PI);
             ctx.fill();
 
+            // Add some sparkles
+            createSparkle(x, y);
+
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             scratchedPixels = imageData.data.filter((_, i) => i % 4 === 3 && imageData.data[i] === 0).length;
             const scratchPercentage = (scratchedPixels / totalPixels) * 100;
@@ -198,6 +264,25 @@
 
             if (scratchPercentage > 70 && isScratching) {
                 revealPrize();
+            }
+        }
+
+        function createSparkle(x, y) {
+            const sparkle = document.createElement('div');
+            sparkle.className = 'sparkle';
+            sparkle.style.left = `${x}px`;
+            sparkle.style.top = `${y}px`;
+            scratchCard.appendChild(sparkle);
+            setTimeout(() => sparkle.remove(), 1500);
+        }
+
+        function createSparkles() {
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const x = Math.random() * scratchCard.offsetWidth;
+                    const y = Math.random() * scratchCard.offsetHeight;
+                    createSparkle(x, y);
+                }, i * 100);
             }
         }
 
